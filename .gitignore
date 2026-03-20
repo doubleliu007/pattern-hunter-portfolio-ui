@@ -1,35 +1,28 @@
-# Python
-__pycache__/
-*.py[cod]
-*.so
-*.egg-info/
+node_modules/
+dist/
 
-# 虚拟环境
-venv/
+# env
+.env
+.env.local
+.env.*.local
+.env.production
 
-# 模型权重
-checkpoints_double/
-
-# 数据缓存
-stock_data_cache/
-
-# 测试/回测输出
-test_results_encoder_v4/
-
-# 数据库
-portfolio.db
-
-# 日志
-logs/
-
-# 前端构建产物
-frontend/node_modules/
-frontend/dist/
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
+
+# TypeScript cache
+*.tsbuildinfo
