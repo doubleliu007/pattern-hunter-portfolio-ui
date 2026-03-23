@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Table, Card, Select, Spin, Alert, Tag } from "antd";
 import { api } from "../utils/api";
+import useIsMobile from "../hooks/useIsMobile";
 import type { SignalsData, Signal } from "../types";
 
 export default function Signals() {
@@ -9,6 +10,7 @@ export default function Signals() {
   const [data, setData] = useState<SignalsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     api.signalDates()
@@ -39,10 +41,10 @@ export default function Signals() {
   const columns = [
     { title: "股票代码", dataIndex: "stock_code", key: "stock_code", width: 120 },
     {
-      title: "大分型 next_price_change",
+      title: isMobile ? "大分型" : "大分型 next_price_change",
       dataIndex: "da_next_price_change",
       key: "da_next_price_change",
-      width: 180,
+      width: isMobile ? 100 : 180,
       sorter: (a: Signal, b: Signal) => (a.da_next_price_change || 0) - (b.da_next_price_change || 0),
       render: (v: number) => v?.toFixed(6) ?? "-",
     },
@@ -50,15 +52,15 @@ export default function Signals() {
       title: "中分型 IQR",
       dataIndex: "zhong_iqr",
       key: "zhong_iqr",
-      width: 140,
+      width: isMobile ? 100 : 140,
       sorter: (a: Signal, b: Signal) => (a.zhong_iqr || 0) - (b.zhong_iqr || 0),
       render: (v: number) => v?.toFixed(6) ?? "-",
     },
     {
-      title: "通过筛选",
+      title: "筛选",
       dataIndex: "passed_filter",
       key: "passed_filter",
-      width: 100,
+      width: isMobile ? 70 : 100,
       filters: [
         { text: "通过", value: true },
         { text: "未通过", value: false },
@@ -70,6 +72,40 @@ export default function Signals() {
   ];
 
   const passedCount = data?.signals?.filter((s) => s.passed_filter).length || 0;
+
+  if (isMobile) {
+    return (
+      <Card
+        size="small"
+        title="每日扫描信号"
+        extra={
+          <Select
+            value={selectedDate || undefined}
+            onChange={onDateChange}
+            style={{ width: 130 }}
+            placeholder="选择日期"
+            options={dates.map((d) => ({ value: d, label: d }))}
+            size="small"
+          />
+        }
+      >
+        {data && (
+          <div style={{ marginBottom: 8, fontSize: 13, color: "rgba(255,255,255,0.65)" }}>
+            共 {data.signals?.length || 0} 只, 通过筛选 {passedCount} 只
+          </div>
+        )}
+        <Table
+          dataSource={data?.signals || []}
+          columns={columns}
+          rowKey="stock_code"
+          size="small"
+          loading={loading}
+          pagination={{ pageSize: 50, size: "small" }}
+          scroll={{ x: 420 }}
+        />
+      </Card>
+    );
+  }
 
   return (
     <Card

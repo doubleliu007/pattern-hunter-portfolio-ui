@@ -8,6 +8,7 @@ import {
 } from "@ant-design/icons";
 import ReactECharts from "echarts-for-react";
 import { api } from "../utils/api";
+import useIsMobile from "../hooks/useIsMobile";
 import type { Overview, NavPoint } from "../types";
 
 export default function Dashboard() {
@@ -16,6 +17,7 @@ export default function Dashboard() {
   const [valueDate, setValueDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     Promise.all([api.overview(), api.nav(), api.holdings()])
@@ -40,9 +42,14 @@ export default function Dashboard() {
   const drawdowns = navData.map((n) => n.drawdown);
   const returns = navData.map((n) => n.return_pct);
 
+  const gridMargin = isMobile
+    ? { left: 50, right: 50, top: 40, bottom: 30 }
+    : { left: 80, right: 80, top: 40, bottom: 30 };
+
   const navChartOption = {
     tooltip: {
       trigger: "axis" as const,
+      confine: true,
       valueFormatter: (v: number, _name: string) => {
         if (v == null) return "-";
         return v.toString();
@@ -62,7 +69,11 @@ export default function Dashboard() {
       },
     },
     legend: { data: ["净值", "收益率%"] },
-    xAxis: { type: "category" as const, data: dates },
+    xAxis: {
+      type: "category" as const,
+      data: dates,
+      axisLabel: isMobile ? { rotate: 45, fontSize: 10 } : {},
+    },
     yAxis: [
       {
         type: "value" as const,
@@ -103,12 +114,16 @@ export default function Dashboard() {
         lineStyle: { width: 1, type: "dashed" as const },
       },
     ],
-    grid: { left: 80, right: 80, top: 40, bottom: 30 },
+    grid: gridMargin,
   };
 
   const ddChartOption = {
-    tooltip: { trigger: "axis" as const },
-    xAxis: { type: "category" as const, data: dates },
+    tooltip: { trigger: "axis" as const, confine: true },
+    xAxis: {
+      type: "category" as const,
+      data: dates,
+      axisLabel: isMobile ? { rotate: 45, fontSize: 10 } : {},
+    },
     yAxis: { type: "value" as const, name: "回撤%" },
     series: [
       {
@@ -119,7 +134,9 @@ export default function Dashboard() {
         itemStyle: { color: "#ff4d4f" },
       },
     ],
-    grid: { left: 60, right: 30, top: 30, bottom: 30 },
+    grid: isMobile
+      ? { left: 50, right: 16, top: 30, bottom: 30 }
+      : { left: 60, right: 30, top: 30, bottom: 30 },
   };
 
   const cts = overview.closed_trade_stats || {} as any;
@@ -135,9 +152,9 @@ export default function Dashboard() {
           </Tag>
         </div>
       )}
-      <Row gutter={[16, 16]}>
+      <Row gutter={[12, 12]}>
         <Col xs={12} sm={6}>
-          <Card>
+          <Card size={isMobile ? "small" : "default"}>
             <Statistic
               title="总收益率"
               value={overview.total_return_pct}
@@ -149,7 +166,7 @@ export default function Dashboard() {
           </Card>
         </Col>
         <Col xs={12} sm={6}>
-          <Card>
+          <Card size={isMobile ? "small" : "default"}>
             <Statistic
               title="最大回撤"
               value={overview.max_drawdown}
@@ -160,62 +177,76 @@ export default function Dashboard() {
           </Card>
         </Col>
         <Col xs={12} sm={6}>
-          <Card>
+          <Card size={isMobile ? "small" : "default"}>
             <Statistic title="夏普比率" value={overview.sharpe_ratio} precision={2} prefix={<FundOutlined />} />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
-          <Card>
+          <Card size={isMobile ? "small" : "default"}>
             <Statistic
               title="已了结胜率"
               value={cts.win_rate ?? 0}
               precision={1}
               suffix={`% (${cts.total ?? 0}笔)`}
             />
-            <div style={{ marginTop: 4, fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
-              盈{cts.winning ?? 0} / 亏{cts.losing ?? 0} · 均收益 {cts.avg_profit_pct?.toFixed(2) ?? "-"}%
-            </div>
+            {!isMobile && (
+              <div style={{ marginTop: 4, fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+                盈{cts.winning ?? 0} / 亏{cts.losing ?? 0} · 均收益 {cts.avg_profit_pct?.toFixed(2) ?? "-"}%
+              </div>
+            )}
           </Card>
         </Col>
       </Row>
 
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+      <Row gutter={[12, 12]} style={{ marginTop: 12 }}>
         <Col xs={12} sm={6}>
-          <Card>
+          <Card size={isMobile ? "small" : "default"}>
             <Statistic
               title="持仓胜率"
               value={ops.win_rate ?? 0}
               precision={1}
               suffix={`% (${ops.total ?? 0}只)`}
             />
-            <div style={{ marginTop: 4, fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
-              浮盈{ops.winning ?? 0} / 浮亏{ops.losing ?? 0}
-            </div>
+            {!isMobile && (
+              <div style={{ marginTop: 4, fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+                浮盈{ops.winning ?? 0} / 浮亏{ops.losing ?? 0}
+              </div>
+            )}
           </Card>
         </Col>
       </Row>
 
-      <Card title="净值走势" style={{ marginTop: 16 }}>
-        <ReactECharts option={navChartOption} style={{ height: 360 }} />
+      <Card title="净值走势" size={isMobile ? "small" : "default"} style={{ marginTop: 12 }}>
+        <ReactECharts option={navChartOption} style={{ height: isMobile ? 260 : 360 }} />
       </Card>
 
-      <Card title="回撤曲线" style={{ marginTop: 16 }}>
-        <ReactECharts option={ddChartOption} style={{ height: 240 }} />
+      <Card title="回撤曲线" size={isMobile ? "small" : "default"} style={{ marginTop: 12 }}>
+        <ReactECharts option={ddChartOption} style={{ height: isMobile ? 200 : 240 }} />
       </Card>
 
-      <Row gutter={16} style={{ marginTop: 16 }}>
-        <Col span={8}>
-          <Card>
-            <Statistic title="总资产" value={overview.total_value} precision={0} prefix="¥" />
+      <Row gutter={[12, 12]} style={{ marginTop: 12 }}>
+        <Col xs={8} sm={8}>
+          <Card size={isMobile ? "small" : "default"}>
+            <Statistic
+              title="总资产"
+              value={overview.total_value}
+              precision={0}
+              prefix="¥"
+            />
           </Card>
         </Col>
-        <Col span={8}>
-          <Card>
-            <Statistic title="持仓市值" value={overview.position_value} precision={0} prefix="¥" />
+        <Col xs={8} sm={8}>
+          <Card size={isMobile ? "small" : "default"}>
+            <Statistic
+              title="持仓市值"
+              value={overview.position_value}
+              precision={0}
+              prefix="¥"
+            />
           </Card>
         </Col>
-        <Col span={8}>
-          <Card>
+        <Col xs={8} sm={8}>
+          <Card size={isMobile ? "small" : "default"}>
             <Statistic title="当前持仓" value={overview.holding_count} suffix="只" />
           </Card>
         </Col>

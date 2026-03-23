@@ -11,6 +11,7 @@ import {
 } from "@ant-design/icons";
 import { extractTokenFromUrl, clearToken } from "./utils/auth";
 import ErrorBoundary from "./components/ErrorBoundary";
+import useIsMobile from "./hooks/useIsMobile";
 
 import Dashboard from "./pages/Dashboard";
 import Holdings from "./pages/Holdings";
@@ -28,6 +29,15 @@ const menuItems = [
   { key: "/pending-orders", icon: <OrderedListOutlined />, label: <NavLink to="/pending-orders">挂单</NavLink> },
   { key: "/signals", icon: <ThunderboltOutlined />, label: <NavLink to="/signals">每日信号</NavLink> },
   { key: "/trades", icon: <SwapOutlined />, label: <NavLink to="/trades">已完成交易对</NavLink> },
+];
+
+const mobileNavItems = [
+  { key: "/", icon: <DashboardOutlined />, label: "总览", to: "/" },
+  { key: "/holdings", icon: <StockOutlined />, label: "持仓", to: "/holdings" },
+  { key: "/executions", icon: <FileTextOutlined />, label: "交割", to: "/executions" },
+  { key: "/pending-orders", icon: <OrderedListOutlined />, label: "挂单", to: "/pending-orders" },
+  { key: "/signals", icon: <ThunderboltOutlined />, label: "信号", to: "/signals" },
+  { key: "/trades", icon: <SwapOutlined />, label: "交易", to: "/trades" },
 ];
 
 function NoToken() {
@@ -57,10 +67,81 @@ function NotFound() {
   );
 }
 
+function MobileBottomNav({ selectedKey }: { selectedKey: string }) {
+  return (
+    <nav className="mobile-bottom-nav">
+      {mobileNavItems.map((item) => (
+        <NavLink
+          key={item.key}
+          to={item.to}
+          className={`nav-item${selectedKey === item.key ? " active" : ""}`}
+        >
+          {item.icon}
+          <span>{item.label}</span>
+        </NavLink>
+      ))}
+    </nav>
+  );
+}
+
+function MobileHeader() {
+  return (
+    <div
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 999,
+        background: "#141414",
+        borderBottom: "1px solid #303030",
+        padding: "10px 16px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}
+    >
+      <span style={{ color: "#fff", fontWeight: 700, fontSize: 15 }}>Pattern Hunter</span>
+      <Button
+        type="link"
+        size="small"
+        danger
+        onClick={() => { clearToken(); window.location.reload(); }}
+      >
+        清除 Token
+      </Button>
+    </div>
+  );
+}
+
 function AppContent() {
   const location = useLocation();
+  const isMobile = useIsMobile();
 
   const selectedKey = "/" + (location.pathname.split("/")[1] || "");
+
+  const routeContent = (
+    <Routes>
+      <Route path="/" element={<Dashboard />} />
+      <Route path="/holdings" element={<Holdings />} />
+      <Route path="/trades" element={<Trades />} />
+      <Route path="/signals" element={<Signals />} />
+      <Route path="/executions" element={<Executions />} />
+      <Route path="/pending-orders" element={<PendingOrders />} />
+      <Route path="/404" element={<NotFound />} />
+      <Route path="*" element={<Navigate to="/404" replace />} />
+    </Routes>
+  );
+
+  if (isMobile) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#000" }}>
+        <MobileHeader />
+        <div className="mobile-content" style={{ padding: 12 }}>
+          {routeContent}
+        </div>
+        <MobileBottomNav selectedKey={selectedKey} />
+      </div>
+    );
+  }
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
@@ -90,16 +171,7 @@ function AppContent() {
           <h3 style={{ color: "#fff", margin: 0, lineHeight: "64px" }}>组合跟踪仪表盘</h3>
         </Header>
         <Content style={{ margin: 24 }}>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/holdings" element={<Holdings />} />
-            <Route path="/trades" element={<Trades />} />
-            <Route path="/signals" element={<Signals />} />
-            <Route path="/executions" element={<Executions />} />
-            <Route path="/pending-orders" element={<PendingOrders />} />
-            <Route path="/404" element={<NotFound />} />
-            <Route path="*" element={<Navigate to="/404" replace />} />
-          </Routes>
+          {routeContent}
         </Content>
       </Layout>
     </Layout>

@@ -1,0 +1,73 @@
+/* Mobile bottom navigation */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: #141414;
+  border-top: 1px solid #303030;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 4px 0 calc(4px + env(safe-area-inset-bottom));
+}
+
+.mobile-bottom-nav .nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 2px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+  text-decoration: none;
+  flex: 1;
+  min-width: 0;
+  transition: color 0.2s;
+}
+
+.mobile-bottom-nav .nav-item .anticon {
+  font-size: 20px;
+  margin-bottom: 2px;
+}
+
+.mobile-bottom-nav .nav-item.active {
+  color: #1677ff;
+}
+
+/* Mobile content padding for bottom nav */
+.mobile-content {
+  padding-bottom: calc(60px + env(safe-area-inset-bottom));
+}
+
+/* Mobile table adjustments */
+@media (max-width: 767px) {
+  .ant-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ant-card-head-title {
+    white-space: normal !important;
+  }
+
+  .ant-card-extra {
+    width: 100%;
+    margin-left: 0 !important;
+    padding-top: 8px;
+  }
+
+  .ant-statistic-title {
+    font-size: 12px !important;
+  }
+
+  .ant-statistic-content {
+    font-size: 18px !important;
+  }
+
+  .ant-statistic-content-prefix,
+  .ant-statistic-content-suffix {
+    font-size: 14px !important;
+  }
+}
