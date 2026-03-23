@@ -1,15 +1,24 @@
-import { useEffect, useState } from "react";
-import { Card, Col, Row, Statistic, Spin, Alert, Tag } from "antd";
+import { useEffect, useState, useMemo } from "react";
+import { Card, Col, Row, Statistic, Spin, Alert, Tag, Select } from "antd";
 import {
   ArrowUpOutlined,
   ArrowDownOutlined,
   FundOutlined,
   ClockCircleOutlined,
+  RiseOutlined,
+  FallOutlined,
 } from "@ant-design/icons";
 import ReactECharts from "echarts-for-react";
 import { api } from "../utils/api";
 import useIsMobile from "../hooks/useIsMobile";
-import type { Overview, NavPoint } from "../types";
+import type { Overview, NavPoint, IndexDailyPoint } from "../types";
+
+const INDEX_OPTIONS = [
+  { value: "000300.SH", label: "沪深300" },
+  { value: "000905.SH", label: "中证500" },
+  { value: "000906.SH", label: "中证800" },
+  { value: "000852.SH", label: "中证1000" },
+];
 
 export default function Dashboard() {
   const [overview, setOverview] = useState<Overview | null>(null);
@@ -17,6 +26,9 @@ export default function Dashboard() {
   const [valueDate, setValueDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState<string>("000300.SH");
+  const [indexData, setIndexData] = useState<IndexDailyPoint[]>([]);
+  const [indexLoading, setIndexLoading] = useState(false);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -32,6 +44,79 @@ export default function Dashboard() {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!selectedIndex) return;
+    setIndexLoading(true);
+    const today = new Date();
+    const endDate = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}`;
+    api
+      .indexDaily(selectedIndex, "20260101", endDate)
+      .then((res) => setIndexData(res.data))
+      .catch(() => setIndexData([]))
+      .finally(() => setIndexLoading(false));
+  }, [selectedIndex]);
+
+  const comparisonData = useMemo(() => {
+    if (!indexData.length || !navData.length) return null;
+
+    const toYMD = (d: string) => d.replace(/-/g, "");
+
+    const portfolioMap = new Map<string, NavPoint>();
+    for (const n of navData) {
+      portfolioMap.set(toYMD(n.date), n);
+    }
+
+    const indexMap = new Map<string, IndexDailyPoint>();
+    for (const d of indexData) {
+      indexMap.set(d.trade_date, d);
+    }
+
+    const commonDates = [...portfolioMap.keys()]
+      .filter((d) => indexMap.has(d))
+      .sort();
+
+    if (commonDates.length < 2) return null;
+
+    const firstPortfolioValue = portfolioMap.get(commonDates[0])!.total_value;
+    const firstIndexClose = indexMap.get(commonDates[0])!.close;
+
+    const dates: string[] = [];
+    const portfolioNav: number[] = [];
+    const indexNav: number[] = [];
+    const portfolioReturns: number[] = [];
+    const indexReturns: number[] = [];
+    const excessReturns: number[] = [];
+
+    for (const d of commonDates) {
+      const pNav = portfolioMap.get(d)!;
+      const iData = indexMap.get(d)!;
+
+      const pNorm = pNav.total_value / firstPortfolioValue;
+      const iNorm = iData.close / firstIndexClose;
+      const pReturn = (pNorm - 1) * 100;
+      const iReturn = (iNorm - 1) * 100;
+
+      dates.push(d.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3"));
+      portfolioNav.push(Number(pNorm.toFixed(4)));
+      indexNav.push(Number(iNorm.toFixed(4)));
+      portfolioReturns.push(Number(pReturn.toFixed(2)));
+      indexReturns.push(Number(iReturn.toFixed(2)));
+      excessReturns.push(Number((pReturn - iReturn).toFixed(2)));
+    }
+
+    return {
+      dates,
+      portfolioNav,
+      indexNav,
+      portfolioReturns,
+      indexReturns,
+      excessReturns,
+      latestExcess: excessReturns[excessReturns.length - 1],
+      latestPortfolioReturn: portfolioReturns[portfolioReturns.length - 1],
+      latestIndexReturn: indexReturns[indexReturns.length - 1],
+    };
+  }, [navData, indexData]);
 
   if (loading) return <Spin size="large" style={{ display: "block", margin: "100px auto" }} />;
   if (error) return <Alert type="error" message={error} />;
@@ -222,6 +307,211 @@ export default function Dashboard() {
 
       <Card title="回撤曲线" size={isMobile ? "small" : "default"} style={{ marginTop: 12 }}>
         <ReactECharts option={ddChartOption} style={{ height: isMobile ? 200 : 240 }} />
+      </Card>
+
+      <Card
+        title={
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <span>指数对比</span>
+            <Select
+              value={selectedIndex}
+              onChange={setSelectedIndex}
+              options={INDEX_OPTIONS}
+              style={{ width: 140 }}
+              size="small"
+            />
+          </div>
+        }
+        size={isMobile ? "small" : "default"}
+        style={{ marginTop: 12 }}
+      >
+        {indexLoading ? (
+          <Spin style={{ display: "block", margin: "40px auto" }} />
+        ) : comparisonData ? (
+          <>
+            <ReactECharts
+              option={{
+                tooltip: {
+                  trigger: "axis" as const,
+                  confine: true,
+                  formatter: (params: any) => {
+                    if (!Array.isArray(params)) return "";
+                    let html = `${params[0].axisValueLabel}<br/>`;
+                    for (const p of params) {
+                      html += `${p.marker} ${p.seriesName}: <b>${(p.value as number).toFixed(4)}</b><br/>`;
+                    }
+                    return html;
+                  },
+                },
+                legend: {
+                  data: [
+                    "组合净值",
+                    INDEX_OPTIONS.find((o) => o.value === selectedIndex)?.label ?? selectedIndex,
+                  ],
+                },
+                xAxis: {
+                  type: "category" as const,
+                  data: comparisonData.dates,
+                  axisLabel: isMobile ? { rotate: 45, fontSize: 10 } : {},
+                },
+                yAxis: {
+                  type: "value" as const,
+                  name: "归一化净值",
+                  scale: true,
+                  axisLabel: { formatter: (v: number) => v.toFixed(2) },
+                },
+                series: [
+                  {
+                    name: "组合净值",
+                    type: "line",
+                    data: comparisonData.portfolioNav,
+                    smooth: true,
+                    lineStyle: { width: 2 },
+                    symbol: "none",
+                  },
+                  {
+                    name:
+                      INDEX_OPTIONS.find((o) => o.value === selectedIndex)?.label ?? selectedIndex,
+                    type: "line",
+                    data: comparisonData.indexNav,
+                    smooth: true,
+                    lineStyle: { width: 2 },
+                    symbol: "none",
+                  },
+                ],
+                grid: gridMargin,
+              }}
+              style={{ height: isMobile ? 260 : 360 }}
+            />
+            <ReactECharts
+              option={{
+                tooltip: {
+                  trigger: "axis" as const,
+                  confine: true,
+                  formatter: (params: any) => {
+                    if (!Array.isArray(params)) return "";
+                    let html = `${params[0].axisValueLabel}<br/>`;
+                    for (const p of params) {
+                      html += `${p.marker} ${p.seriesName}: <b>${(p.value as number).toFixed(2)}%</b><br/>`;
+                    }
+                    return html;
+                  },
+                },
+                legend: {
+                  data: [
+                    "组合收益率",
+                    INDEX_OPTIONS.find((o) => o.value === selectedIndex)?.label + "收益率",
+                    "超额收益",
+                  ],
+                },
+                xAxis: {
+                  type: "category" as const,
+                  data: comparisonData.dates,
+                  axisLabel: isMobile ? { rotate: 45, fontSize: 10 } : {},
+                },
+                yAxis: {
+                  type: "value" as const,
+                  name: "收益率%",
+                  axisLabel: { formatter: (v: number) => `${v}%` },
+                },
+                series: [
+                  {
+                    name: "组合收益率",
+                    type: "line",
+                    data: comparisonData.portfolioReturns,
+                    smooth: true,
+                    lineStyle: { width: 2 },
+                    symbol: "none",
+                  },
+                  {
+                    name:
+                      INDEX_OPTIONS.find((o) => o.value === selectedIndex)?.label + "收益率",
+                    type: "line",
+                    data: comparisonData.indexReturns,
+                    smooth: true,
+                    lineStyle: { width: 2 },
+                    symbol: "none",
+                  },
+                  {
+                    name: "超额收益",
+                    type: "line",
+                    data: comparisonData.excessReturns,
+                    smooth: true,
+                    lineStyle: { width: 1.5, type: "dashed" as const },
+                    areaStyle: { opacity: 0.1 },
+                    symbol: "none",
+                  },
+                ],
+                grid: gridMargin,
+              }}
+              style={{ height: isMobile ? 260 : 360 }}
+            />
+            <Row gutter={[12, 12]} style={{ marginTop: 12 }}>
+              <Col xs={8} sm={8}>
+                <Card size="small">
+                  <Statistic
+                    title="组合收益率"
+                    value={comparisonData.latestPortfolioReturn}
+                    precision={2}
+                    suffix="%"
+                    valueStyle={{
+                      color: comparisonData.latestPortfolioReturn >= 0 ? "#3f8600" : "#cf1322",
+                    }}
+                    prefix={
+                      comparisonData.latestPortfolioReturn >= 0 ? (
+                        <ArrowUpOutlined />
+                      ) : (
+                        <ArrowDownOutlined />
+                      )
+                    }
+                  />
+                </Card>
+              </Col>
+              <Col xs={8} sm={8}>
+                <Card size="small">
+                  <Statistic
+                    title={
+                      (INDEX_OPTIONS.find((o) => o.value === selectedIndex)?.label ?? "指数") +
+                      "收益率"
+                    }
+                    value={comparisonData.latestIndexReturn}
+                    precision={2}
+                    suffix="%"
+                    valueStyle={{
+                      color: comparisonData.latestIndexReturn >= 0 ? "#3f8600" : "#cf1322",
+                    }}
+                    prefix={
+                      comparisonData.latestIndexReturn >= 0 ? (
+                        <ArrowUpOutlined />
+                      ) : (
+                        <ArrowDownOutlined />
+                      )
+                    }
+                  />
+                </Card>
+              </Col>
+              <Col xs={8} sm={8}>
+                <Card size="small">
+                  <Statistic
+                    title="超额收益"
+                    value={comparisonData.latestExcess}
+                    precision={2}
+                    suffix="%"
+                    valueStyle={{
+                      color: comparisonData.latestExcess >= 0 ? "#3f8600" : "#cf1322",
+                      fontWeight: 700,
+                    }}
+                    prefix={
+                      comparisonData.latestExcess >= 0 ? <RiseOutlined /> : <FallOutlined />
+                    }
+                  />
+                </Card>
+              </Col>
+            </Row>
+          </>
+        ) : (
+          <Alert type="info" message="暂无可对比的数据" showIcon />
+        )}
       </Card>
 
       <Row gutter={[12, 12]} style={{ marginTop: 12 }}>

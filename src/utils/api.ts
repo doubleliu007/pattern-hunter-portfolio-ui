@@ -9,6 +9,7 @@ import type {
   ExecutionsData,
   ExecutionsSummary,
   PendingOrdersData,
+  IndexDailyResponse,
 } from "../types";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
@@ -66,4 +67,10 @@ export const api = {
   executionsSummary: () => request<ExecutionsSummary>("/api/executions/summary"),
   pendingOrders: (status?: string) =>
     request<PendingOrdersData>("/api/pending-orders", status ? { status } : {}),
+  indexDaily: (ts_code: string, start_date?: string, end_date?: string) => {
+    const q: Record<string, string> = { ts_code };
+    if (start_date) q.start_date = start_date;
+    if (end_date) q.end_date = end_date;
+    return request<IndexDailyResponse>("/api/index_daily", q);
+  },
 };

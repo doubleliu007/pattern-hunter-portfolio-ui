@@ -141,3 +141,23 @@ export interface PendingOrdersData {
   orders: PendingOrder[];
   total: number;
 }
+
+export interface IndexDailyPoint {
+  ts_code: string;
+  trade_date: string;
+  close: number;
+  open: number;
+  high: number;
+  low: number;
+  pre_close: number;
+  change: number;
+  pct_chg: number;
+  vol: number;
+  amount: number;
+}
+
+export interface IndexDailyResponse {
+  data: IndexDailyPoint[];
+  total: number;
+  ts_code: string;
+}
