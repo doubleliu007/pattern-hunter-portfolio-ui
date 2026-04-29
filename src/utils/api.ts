@@ -13,7 +13,7 @@ import type {
   HoldingsDailyResponse,
 } from "../types";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "https://www.patternhunter.cn";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
 
 async function request<T>(path: string, params?: Record<string, string>): Promise<T> {
   const token = getToken();
