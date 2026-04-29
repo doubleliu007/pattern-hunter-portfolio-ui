@@ -8,6 +8,9 @@ import {
   ThunderboltOutlined,
   FileTextOutlined,
   OrderedListOutlined,
+  PieChartOutlined,
+  BarChartOutlined,
+  AimOutlined,
 } from "@ant-design/icons";
 import { Analytics } from "@vercel/analytics/react";
 import { extractTokenFromUrl, clearToken } from "./utils/auth";
@@ -20,6 +23,9 @@ import Trades from "./pages/Trades";
 import Signals from "./pages/Signals";
 import Executions from "./pages/Executions";
 import PendingOrders from "./pages/PendingOrders";
+import Contributions from "./pages/Contributions";
+import PeriodContributions from "./pages/PeriodContributions";
+import Deviation from "./pages/Deviation";
 
 const { Header, Content, Sider } = Layout;
 
@@ -30,6 +36,9 @@ const menuItems = [
   { key: "/pending-orders", icon: <OrderedListOutlined />, label: <NavLink to="/pending-orders">挂单</NavLink> },
   { key: "/signals", icon: <ThunderboltOutlined />, label: <NavLink to="/signals">每日信号</NavLink> },
   { key: "/trades", icon: <SwapOutlined />, label: <NavLink to="/trades">已完成交易对</NavLink> },
+  { key: "/contributions", icon: <PieChartOutlined />, label: <NavLink to="/contributions">单日贡献</NavLink> },
+  { key: "/period-contributions", icon: <BarChartOutlined />, label: <NavLink to="/period-contributions">区间贡献</NavLink> },
+  { key: "/deviation", icon: <AimOutlined />, label: <NavLink to="/deviation">偏离归因</NavLink> },
 ];
 
 const mobileNavItems = [
@@ -39,6 +48,9 @@ const mobileNavItems = [
   { key: "/pending-orders", icon: <OrderedListOutlined />, label: "挂单", to: "/pending-orders" },
   { key: "/signals", icon: <ThunderboltOutlined />, label: "信号", to: "/signals" },
   { key: "/trades", icon: <SwapOutlined />, label: "交易", to: "/trades" },
+  { key: "/contributions", icon: <PieChartOutlined />, label: "单日贡献", to: "/contributions" },
+  { key: "/period-contributions", icon: <BarChartOutlined />, label: "区间贡献", to: "/period-contributions" },
+  { key: "/deviation", icon: <AimOutlined />, label: "偏离归因", to: "/deviation" },
 ];
 
 function NoToken() {
@@ -123,6 +135,9 @@ function AppContent() {
     <Routes>
       <Route path="/" element={<Dashboard />} />
       <Route path="/holdings" element={<Holdings />} />
+      <Route path="/contributions" element={<Contributions />} />
+      <Route path="/period-contributions" element={<PeriodContributions />} />
+      <Route path="/deviation" element={<Deviation />} />
       <Route path="/trades" element={<Trades />} />
       <Route path="/signals" element={<Signals />} />
       <Route path="/executions" element={<Executions />} />
@@ -146,25 +161,53 @@ function AppContent() {
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      <Sider breakpoint="lg" collapsedWidth={0}>
-        <div style={{ height: 48, margin: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <span style={{ color: "#fff", fontWeight: 700, fontSize: 16 }}>Pattern Hunter</span>
-        </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[selectedKey === "/" ? "/" : selectedKey]}
-          items={menuItems}
-        />
-        <div style={{ position: "absolute", bottom: 16, width: "100%", textAlign: "center" }}>
-          <Button
-            type="link"
-            size="small"
-            danger
-            onClick={() => { clearToken(); window.location.reload(); }}
+      <Sider
+        breakpoint="lg"
+        collapsedWidth={0}
+        style={{
+          height: "100vh",
+          position: "sticky",
+          top: 0,
+          left: 0,
+          overflow: "auto",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            minHeight: "100%",
+          }}
+        >
+          <div
+            style={{
+              height: 48,
+              margin: 16,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
           >
-            清除 Token
-          </Button>
+            <span style={{ color: "#fff", fontWeight: 700, fontSize: 16 }}>Pattern Hunter</span>
+          </div>
+          <Menu
+            theme="dark"
+            mode="inline"
+            selectedKeys={[selectedKey === "/" ? "/" : selectedKey]}
+            items={menuItems}
+            style={{ flex: 1, borderRight: 0 }}
+          />
+          <div style={{ padding: "16px 0", textAlign: "center", flexShrink: 0 }}>
+            <Button
+              type="link"
+              size="small"
+              danger
+              onClick={() => { clearToken(); window.location.reload(); }}
+            >
+              清除 Token
+            </Button>
+          </div>
         </div>
       </Sider>
       <Layout>

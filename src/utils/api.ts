@@ -10,6 +10,7 @@ import type {
   ExecutionsSummary,
   PendingOrdersData,
   IndexDailyResponse,
+  HoldingsDailyResponse,
 } from "../types";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
@@ -41,6 +42,8 @@ export const api = {
   overview: () => request<Overview>("/api/overview"),
   nav: () => request<NavPoint[]>("/api/nav"),
   holdings: () => request<HoldingsData>("/api/holdings"),
+  holdingsDaily: (date: string) =>
+    request<HoldingsDailyResponse>("/api/holdings/daily", { date }),
   trades: (page = 1, size = 20) =>
     request<TradesData>("/api/trades", { page: String(page), size: String(size) }),
   signals: (date?: string) =>
