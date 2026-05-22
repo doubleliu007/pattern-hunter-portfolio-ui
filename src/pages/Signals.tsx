@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Table, Card, Select, Spin, Alert, Tag } from "antd";
 import { api } from "../utils/api";
 import useIsMobile from "../hooks/useIsMobile";
+import { useCombo } from "../context/ComboContext";
 import type { SignalsData, Signal } from "../types";
 
 export default function Signals() {
@@ -11,26 +12,33 @@ export default function Signals() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const isMobile = useIsMobile();
+  const { combo } = useCombo();
 
   useEffect(() => {
-    api.signalDates()
+    setDates([]);
+    setSelectedDate("");
+    setData(null);
+    setLoading(true);
+    setError("");
+
+    api.signalDates(combo)
       .then((d) => {
         setDates(d);
         if (d.length > 0) {
           setSelectedDate(d[0]);
-          return api.signals(d[0]);
+          return api.signals(d[0], combo);
         }
         return null;
       })
       .then((res) => { if (res) setData(res); })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [combo]);
 
   const onDateChange = (date: string) => {
     setSelectedDate(date);
     setLoading(true);
-    api.signals(date)
+    api.signals(date, combo)
       .then(setData)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));

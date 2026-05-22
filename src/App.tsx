@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Routes, Route, NavLink, useLocation, Navigate } from "react-router-dom";
-import { ConfigProvider, Layout, Menu, theme, Result, Button } from "antd";
+import { ConfigProvider, Layout, Menu, theme, Result, Button, Select, Spin } from "antd";
 import {
   DashboardOutlined,
   StockOutlined,
@@ -11,11 +11,13 @@ import {
   PieChartOutlined,
   BarChartOutlined,
   AimOutlined,
+  ExperimentOutlined,
 } from "@ant-design/icons";
 import { Analytics } from "@vercel/analytics/react";
 import { extractTokenFromUrl, clearToken } from "./utils/auth";
 import ErrorBoundary from "./components/ErrorBoundary";
 import useIsMobile from "./hooks/useIsMobile";
+import { ComboProvider, useCombo } from "./context/ComboContext";
 
 import Dashboard from "./pages/Dashboard";
 import Holdings from "./pages/Holdings";
@@ -97,6 +99,39 @@ function MobileBottomNav({ selectedKey }: { selectedKey: string }) {
   );
 }
 
+function ComboSelector({ style }: { style?: React.CSSProperties }) {
+  const { combo, setCombo, combos, loading } = useCombo();
+
+  if (loading) return <Spin size="small" />;
+  if (combos.length <= 1) return null;
+
+  const strategyLabel = (name: string) => {
+    const info = combos.find((c) => c.name === name);
+    if (!info) return name;
+    const shortModule = info.strategy_module.split(".").pop() ?? info.strategy_module;
+    return `${name.replace(/_/g, " ")} (${shortModule})`;
+  };
+
+  return (
+    <Select
+      value={combo}
+      onChange={setCombo}
+      style={{ minWidth: 200, ...style }}
+      size="small"
+      popupMatchSelectWidth={false}
+      options={combos.map((c) => ({
+        value: c.name,
+        label: (
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <ExperimentOutlined />
+            {strategyLabel(c.name)}
+          </span>
+        ),
+      }))}
+    />
+  );
+}
+
 function MobileHeader() {
   return (
     <div
@@ -108,19 +143,22 @@ function MobileHeader() {
         borderBottom: "1px solid #303030",
         padding: "10px 16px",
         display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
+        flexDirection: "column",
+        gap: 8,
       }}
     >
-      <span style={{ color: "#fff", fontWeight: 700, fontSize: 15 }}>Pattern Hunter</span>
-      <Button
-        type="link"
-        size="small"
-        danger
-        onClick={() => { clearToken(); window.location.reload(); }}
-      >
-        清除 Token
-      </Button>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ color: "#fff", fontWeight: 700, fontSize: 15 }}>Pattern Hunter</span>
+        <Button
+          type="link"
+          size="small"
+          danger
+          onClick={() => { clearToken(); window.location.reload(); }}
+        >
+          清除 Token
+        </Button>
+      </div>
+      <ComboSelector style={{ width: "100%" }} />
     </div>
   );
 }
@@ -211,8 +249,9 @@ function AppContent() {
         </div>
       </Sider>
       <Layout>
-        <Header style={{ padding: "0 24px", background: "#141414" }}>
+        <Header style={{ padding: "0 24px", background: "#141414", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h3 style={{ color: "#fff", margin: 0, lineHeight: "64px" }}>组合跟踪仪表盘</h3>
+          <ComboSelector />
         </Header>
         <Content style={{ margin: 24 }}>
           {routeContent}
@@ -235,7 +274,9 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ConfigProvider theme={{ algorithm: theme.darkAlgorithm }}>
-        <AppContent />
+        <ComboProvider>
+          <AppContent />
+        </ComboProvider>
       </ConfigProvider>
       <Analytics />
     </ErrorBoundary>

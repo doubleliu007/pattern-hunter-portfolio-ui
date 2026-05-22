@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Table, Card, Spin, Alert, Tag, Select, Space, Button } from "antd";
 import { ReloadOutlined } from "@ant-design/icons";
 import { api } from "../utils/api";
+import { useCombo } from "../context/ComboContext";
 import useIsMobile from "../hooks/useIsMobile";
 import type { PendingOrdersData, PendingOrder } from "../types";
 
@@ -53,20 +54,21 @@ export default function PendingOrders() {
   const [error, setError] = useState("");
   const [status, setStatus] = useState<string>("pending");
   const isMobile = useIsMobile();
+  const { combo } = useCombo();
 
   const fetchOrders = useCallback((s: string) => {
     setLoading(true);
     setError("");
     api
-      .pendingOrders(s)
+      .pendingOrders(s, combo)
       .then(setData)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [combo]);
 
   useEffect(() => {
     fetchOrders(status);
-  }, []);
+  }, [combo]);
 
   const handleStatusChange = (v: string) => {
     setStatus(v);

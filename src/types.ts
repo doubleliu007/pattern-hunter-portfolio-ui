@@ -22,6 +22,12 @@ export interface Overview {
   holding_count: number;
   closed_trade_stats: ClosedTradeStats;
   open_position_stats: OpenPositionStats;
+  cash?: number;
+  initial_capital?: number;
+  trading_days?: number;
+  latest_date?: string;
+  is_realtime?: boolean;
+  combo?: string;
 }
 
 export interface NavPoint {
@@ -183,4 +189,17 @@ export interface HoldingsDailyResponse {
   date: string;
   items: HoldingsDailyItem[];
   total: number;
+}
+
+export interface ComboInfo {
+  name: string;
+  model_type: string;
+  strategy_module: string;
+  hold_days: number;
+  initial_capital: number;
+}
+
+export interface CombosResponse {
+  combos: ComboInfo[];
+  default: string;
 }

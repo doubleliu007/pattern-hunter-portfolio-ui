@@ -26,6 +26,7 @@ import ReactECharts from "echarts-for-react";
 import dayjs, { type Dayjs } from "dayjs";
 import { api } from "../utils/api";
 import useIsMobile from "../hooks/useIsMobile";
+import { useCombo } from "../context/ComboContext";
 import type {
   NavPoint,
   HoldingsDailyResponse,
@@ -112,7 +113,8 @@ function slotKey(slots: number[]): string {
 async function fetchHoldingsDailyConcurrent(
   dates: string[],
   maxConc = MAX_CONCURRENT_DAILY,
-  signal?: { cancelled: boolean }
+  signal?: { cancelled: boolean },
+  combo?: string
 ): Promise<{
   map: Map<string, HoldingsDailyResponse>;
   errors: Map<string, string>;
@@ -126,7 +128,7 @@ async function fetchHoldingsDailyConcurrent(
       const i = idx++;
       const d = dates[i];
       try {
-        const res = await api.holdingsDaily(d);
+        const res = await api.holdingsDaily(d, combo);
         if (signal?.cancelled) return;
         map.set(d, res);
       } catch (e) {
@@ -195,11 +197,12 @@ export default function Deviation() {
   );
 
   const isMobile = useIsMobile();
+  const { combo } = useCombo();
 
   // 1) 加载 nav，建立可选交易日索引
   useEffect(() => {
     api
-      .nav()
+      .nav(combo)
       .then((nav) => {
         const sorted = [...nav].sort((a, b) => a.date.localeCompare(b.date));
         setNavData(sorted);
@@ -214,7 +217,7 @@ export default function Deviation() {
       })
       .catch((e) => setNavError(e.message))
       .finally(() => setNavLoading(false));
-  }, []);
+  }, [combo]);
 
   const navDateSet = useMemo(() => {
     const s = new Set<string>();
@@ -287,7 +290,8 @@ export default function Deviation() {
     const pHoldings = fetchHoldingsDailyConcurrent(
       tradingDays,
       MAX_CONCURRENT_DAILY,
-      signal
+      signal,
+      combo
     );
     const pIndex = api.indexDaily(selectedIndex, startCompact, endCompact);
 
@@ -318,7 +322,7 @@ export default function Deviation() {
     return () => {
       signal.cancelled = true;
     };
-  }, [tradingDays, tooManyDays, selectedIndex]);
+  }, [tradingDays, tooManyDays, selectedIndex, combo]);
 
   // 3) 核心：偏离归因主聚合
   const result = useMemo(() => {

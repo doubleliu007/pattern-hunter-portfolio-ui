@@ -25,6 +25,7 @@ import ReactECharts from "echarts-for-react";
 import dayjs, { type Dayjs } from "dayjs";
 import { api } from "../utils/api";
 import useIsMobile from "../hooks/useIsMobile";
+import { useCombo } from "../context/ComboContext";
 import type {
   NavPoint,
   Execution,
@@ -302,11 +303,12 @@ const CLOSED_PROXY_TIP = "结束日已不持仓，收盘/涨跌幅按「区间�
 async function fetchExecutionsInRange(
   start: string,
   end: string,
-  signal?: { cancelled: boolean }
+  signal?: { cancelled: boolean },
+  combo?: string
 ): Promise<Execution[]> {
   const PAGE_SIZE = 100;
   const baseQuery = { start_date: start, end_date: end };
-  const first = await api.executions({ ...baseQuery, page: 1, size: PAGE_SIZE });
+  const first = await api.executions({ ...baseQuery, page: 1, size: PAGE_SIZE }, combo);
   if (signal?.cancelled) return [];
   if (first.pages <= 1) return first.executions;
 
@@ -321,7 +323,7 @@ async function fetchExecutionsInRange(
         ...baseQuery,
         page: pages[i],
         size: PAGE_SIZE,
-      });
+      }, combo);
       if (signal?.cancelled) return;
       results[i] = r.executions;
     }
@@ -335,7 +337,8 @@ async function fetchExecutionsInRange(
 async function fetchHoldingsDailyConcurrent(
   dates: string[],
   maxConc = MAX_CONCURRENT_DAILY,
-  signal?: { cancelled: boolean }
+  signal?: { cancelled: boolean },
+  combo?: string
 ): Promise<{
   map: Map<string, HoldingsDailyResponse>;
   errors: Map<string, string>;
@@ -349,7 +352,7 @@ async function fetchHoldingsDailyConcurrent(
       const i = idx++;
       const d = dates[i];
       try {
-        const res = await api.holdingsDaily(d);
+        const res = await api.holdingsDaily(d, combo);
         if (signal?.cancelled) return;
         map.set(d, res);
       } catch (e) {
@@ -385,11 +388,12 @@ export default function PeriodContributions() {
   const holdingsCacheRef = useRef<Map<string, HoldingsDailyResponse>>(new Map());
 
   const isMobile = useIsMobile();
+  const { combo } = useCombo();
 
   // 1) 加载 nav，建立可选交易日索引
   useEffect(() => {
     api
-      .nav()
+      .nav(combo)
       .then((nav) => {
         const sorted = [...nav].sort((a, b) => a.date.localeCompare(b.date));
         setNavData(sorted);
@@ -404,7 +408,7 @@ export default function PeriodContributions() {
       })
       .catch((e) => setNavError(e.message))
       .finally(() => setNavLoading(false));
-  }, []);
+  }, [combo]);
 
   // navData 派生的所有可选日期 set，用于 disabledDate
   const navDateSet = useMemo(() => {
@@ -469,6 +473,10 @@ export default function PeriodContributions() {
 
   // 2) 区间变化时重新拉取数据
   useEffect(() => {
+    holdingsCacheRef.current.clear();
+  }, [combo]);
+
+  useEffect(() => {
     if (!tradingDays.length || tooManyDays) {
       setHoldingsByDate(new Map());
       setExecutions([]);
@@ -499,13 +507,14 @@ export default function PeriodContributions() {
       ? fetchHoldingsDailyConcurrent(
           datesNeedFetch,
           MAX_CONCURRENT_DAILY,
-          signal
+          signal,
+          combo
         )
       : Promise.resolve({
           map: new Map<string, HoldingsDailyResponse>(),
           errors: new Map<string, string>(),
         });
-    const pExec = fetchExecutionsInRange(start, end, signal);
+    const pExec = fetchExecutionsInRange(start, end, signal, combo);
 
     Promise.allSettled([pHoldings, pExec]).then((settled) => {
       if (signal.cancelled) return;
@@ -560,7 +569,7 @@ export default function PeriodContributions() {
     return () => {
       signal.cancelled = true;
     };
-  }, [tradingDays, preStartDate, tooManyDays]);
+  }, [tradingDays, preStartDate, tooManyDays, combo]);
 
   // 区间组合涨跌：(nav_end - nav_{start-1}) / nav_{start-1} * 100
   const periodReturnPct = useMemo(() => {

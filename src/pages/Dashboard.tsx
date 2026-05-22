@@ -10,6 +10,7 @@ import {
 } from "@ant-design/icons";
 import ReactECharts from "echarts-for-react";
 import { api } from "../utils/api";
+import { useCombo } from "../context/ComboContext";
 import useIsMobile from "../hooks/useIsMobile";
 import type { Overview, NavPoint, IndexDailyPoint } from "../types";
 
@@ -29,10 +30,11 @@ export default function Dashboard() {
   const [selectedIndex, setSelectedIndex] = useState<string>("000905.SH");
   const [indexData, setIndexData] = useState<IndexDailyPoint[]>([]);
   const [indexLoading, setIndexLoading] = useState(false);
+  const { combo } = useCombo();
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    Promise.all([api.overview(), api.nav(), api.holdings()])
+    Promise.all([api.overview(combo), api.nav(combo), api.holdings(combo)])
       .then(([ov, nav, holdings]) => {
         setOverview(ov);
         setNavData(nav);
@@ -43,7 +45,7 @@ export default function Dashboard() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [combo]);
 
   useEffect(() => {
     if (!selectedIndex) return;

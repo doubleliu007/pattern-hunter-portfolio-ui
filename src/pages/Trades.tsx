@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Table, Card, Spin, Alert, Tag } from "antd";
 import { api } from "../utils/api";
 import useIsMobile from "../hooks/useIsMobile";
+import { useCombo } from "../context/ComboContext";
 import type { TradesData, Trade } from "../types";
 
 function MobileTradeCard({ t }: { t: Trade }) {
@@ -36,18 +37,19 @@ export default function Trades() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const isMobile = useIsMobile();
+  const { combo } = useCombo();
 
   const pageSize = 20;
 
   const fetchPage = (p: number) => {
     setLoading(true);
-    api.trades(p, pageSize)
+    api.trades(p, pageSize, combo)
       .then(setData)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchPage(1); }, []);
+  useEffect(() => { setPage(1); fetchPage(1); }, [combo]);
 
   if (error) return <Alert type="error" message={error} />;
 

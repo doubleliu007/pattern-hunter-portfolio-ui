@@ -20,6 +20,7 @@ import {
 import dayjs, { Dayjs } from "dayjs";
 import { api } from "../utils/api";
 import useIsMobile from "../hooks/useIsMobile";
+import { useCombo } from "../context/ComboContext";
 import type { ExecutionsData, ExecutionsSummary, Execution } from "../types";
 
 const { RangePicker } = DatePicker;
@@ -76,6 +77,7 @@ export default function Executions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const isMobile = useIsMobile();
+  const { combo } = useCombo();
 
   const [filters, setFilters] = useState<Filters>({});
   const [filterAction, setFilterAction] = useState<string | undefined>();
@@ -86,18 +88,18 @@ export default function Executions() {
     (p: number, f: Filters = filters) => {
       setLoading(true);
       api
-        .executions({ page: p, size: pageSize, ...f })
+        .executions({ page: p, size: pageSize, ...f }, combo)
         .then(setData)
         .catch((e) => setError(e.message))
         .finally(() => setLoading(false));
     },
-    [pageSize, filters],
+    [pageSize, filters, combo],
   );
 
   useEffect(() => {
     fetchPage(1);
-    api.executionsSummary().then(setSummary).catch(() => {});
-  }, []);
+    api.executionsSummary(combo).then(setSummary).catch(() => {});
+  }, [combo]);
 
   const handleSearch = () => {
     const f: Filters = {};

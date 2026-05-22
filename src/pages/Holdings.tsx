@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Table, Card, Spin, Alert, Tag, Tooltip, List } from "antd";
 import { InfoCircleOutlined, ClockCircleOutlined } from "@ant-design/icons";
 import { api } from "../utils/api";
+import { useCombo } from "../context/ComboContext";
 import useIsMobile from "../hooks/useIsMobile";
 import type { HoldingsData, Slot, Position } from "../types";
 
@@ -47,16 +48,21 @@ export default function Holdings() {
   const [pageSize, setPageSize] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
   const isMobile = useIsMobile();
+  const { combo } = useCombo();
 
   useEffect(() => {
-    Promise.all([api.holdings(), api.slots()])
+    setData(null);
+    setSlots([]);
+    setError("");
+    setLoading(true);
+    Promise.all([api.holdings(combo), api.slots(combo)])
       .then(([holdings, slotsData]) => {
         setData(holdings);
         setSlots(slotsData);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [combo]);
 
   if (loading) return <Spin size="large" style={{ display: "block", margin: "100px auto" }} />;
   if (error) return <Alert type="error" message={error} />;

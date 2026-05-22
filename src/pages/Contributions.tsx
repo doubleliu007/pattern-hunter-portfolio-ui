@@ -22,6 +22,7 @@ import {
 } from "@ant-design/icons";
 import ReactECharts from "echarts-for-react";
 import { api } from "../utils/api";
+import { useCombo } from "../context/ComboContext";
 import useIsMobile from "../hooks/useIsMobile";
 import type {
   NavPoint,
@@ -169,7 +170,7 @@ function proxyTipFor(r: { is_intraday: boolean }) {
   return r.is_intraday ? INTRADAY_PROXY_TIP : CLOSED_PROXY_TIP;
 }
 
-async function fetchExecutionsForDate(date: string): Promise<Execution[]> {
+async function fetchExecutionsForDate(date: string, combo?: string): Promise<Execution[]> {
   const SIZE_CANDIDATES = [100, 50, 20];
   const baseQuery = { start_date: date, end_date: date };
 
@@ -178,7 +179,7 @@ async function fetchExecutionsForDate(date: string): Promise<Execution[]> {
   let lastErr: unknown;
   for (const size of SIZE_CANDIDATES) {
     try {
-      first = await api.executions({ ...baseQuery, page: 1, size });
+      first = await api.executions({ ...baseQuery, page: 1, size }, combo);
       pageSize = size;
       break;
     } catch (e) {
@@ -193,7 +194,7 @@ async function fetchExecutionsForDate(date: string): Promise<Execution[]> {
 
   const restPages = await Promise.all(
     Array.from({ length: first.pages - 1 }, (_, i) =>
-      api.executions({ ...baseQuery, page: i + 2, size: pageSize })
+      api.executions({ ...baseQuery, page: i + 2, size: pageSize }, combo)
     )
   );
   return first.executions.concat(...restPages.map((r) => r.executions));
@@ -227,11 +228,12 @@ export default function Contributions() {
   const [closedPreCloseError, setClosedPreCloseError] = useState("");
 
   const isMobile = useIsMobile();
+  const { combo } = useCombo();
 
   // 1) 拉 nav，确定可选日期与默认值
   useEffect(() => {
     api
-      .nav()
+      .nav(combo)
       .then((nav) => {
         const sorted = [...nav].sort((a, b) => a.date.localeCompare(b.date));
         setNavData(sorted);
@@ -239,7 +241,7 @@ export default function Contributions() {
       })
       .catch((e) => setNavError(e.message))
       .finally(() => setNavLoading(false));
-  }, []);
+  }, [combo]);
 
   // 2) 选定日期变化时并行拉持仓日线 + 当日交割单
   useEffect(() => {
@@ -253,7 +255,7 @@ export default function Contributions() {
     let cancelled = false;
 
     const pHoldings = api
-      .holdingsDaily(selectedDate)
+      .holdingsDaily(selectedDate, combo)
       .then((res) => {
         if (!cancelled) setItems(res.items || []);
       })
@@ -261,7 +263,7 @@ export default function Contributions() {
         if (!cancelled) setDayError(e.message);
       });
 
-    const pExec = fetchExecutionsForDate(selectedDate)
+    const pExec = fetchExecutionsForDate(selectedDate, combo)
       .then((rows) => {
         if (!cancelled) setExecutions(rows);
       })
@@ -276,7 +278,7 @@ export default function Contributions() {
     return () => {
       cancelled = true;
     };
-  }, [selectedDate]);
+  }, [selectedDate, combo]);
 
   // prev_total_value：选定日期的前一交易日总资产，作为贡献度的分母
   const { prevDate, prevTotalValue, dayReturnPct, todayTotalValue } = useMemo(() => {
@@ -358,7 +360,7 @@ export default function Contributions() {
     }
     let cancelled = false;
     api
-      .holdingsDaily(prevDate)
+      .holdingsDaily(prevDate, combo)
       .then((res) => {
         if (cancelled) return;
         const need = new Set(closedTodayCodes);
@@ -381,7 +383,7 @@ export default function Contributions() {
     return () => {
       cancelled = true;
     };
-  }, [prevDate, closedTodayCodes]);
+  }, [prevDate, closedTodayCodes, combo]);
 
   const rows: ContribRow[] = useMemo(() => {
     if (!prevTotalValue || prevTotalValue <= 0) return [];
