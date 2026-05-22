@@ -151,6 +151,15 @@ export default function Dashboard() {
     ? { left: 50, right: 50, top: 40, bottom: 30 }
     : { left: 80, right: 80, top: 40, bottom: 30 };
 
+  const initialCapital = overview.initial_capital ?? values[0] ?? 100000000;
+  const retMin = Math.min(0, ...returns);
+  const retMax = Math.max(0, ...returns);
+  const retPad = (retMax - retMin) * 0.08 || 1;
+  const retAxisMin = retMin - retPad;
+  const retAxisMax = retMax + retPad;
+  const valAxisMin = initialCapital * (1 + retAxisMin / 100);
+  const valAxisMax = initialCapital * (1 + retAxisMax / 100);
+
   const navChartOption = {
     tooltip: {
       trigger: "axis" as const,
@@ -184,14 +193,16 @@ export default function Dashboard() {
         type: "value" as const,
         name: "净值",
         position: "left" as const,
-        alignTicks: true,
+        min: valAxisMin,
+        max: valAxisMax,
         axisLabel: { formatter: (v: number) => Math.round(v).toString() },
       },
       {
         type: "value" as const,
         name: "收益率%",
         position: "right" as const,
-        alignTicks: true,
+        min: retAxisMin,
+        max: retAxisMax,
         axisLabel: {
           formatter: (v: number) => {
             const s = v.toFixed(2);
